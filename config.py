@@ -1,0 +1,3 @@
+ADDRESS_IP = "127.0.0.1:9222"
+
+EXCEL_FILE = "data.xlsx"
