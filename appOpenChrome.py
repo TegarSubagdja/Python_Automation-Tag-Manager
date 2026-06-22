@@ -1,7 +1,6 @@
-import config
 import time
-import subprocess
 import config
+import subprocess
 
 import selenium.webdriver as webdriver
 from selenium.webdriver.chrome.options import Options
@@ -22,76 +21,206 @@ def open_chrome():
 def connect_chrome():
     options = Options()
     options.debugger_address = "127.0.0.1:9222"
-    return webdriver.Chrome(options=options)
+    while True:
+        try:
+            driver = webdriver.Chrome(options=options)
+            return driver
+        except Exception as e:
+            print("Gagal connect")
+            time.sleep(1)
 
-def find_tab(target, driver):
+def switch_tab(target, driver, close_other=False):
     tabs = driver.window_handles
+    matched_tab = None
 
-    for i, tab in enumerate(tabs):
+    for tab in tabs:
         driver.switch_to.window(tab)
+        print(f"checking url: {driver.current_url}")
+
         if target in driver.current_url:
-            return tab
-    return None
+            matched_tab = tab
+            break
+
+    if matched_tab is None:
+        raise Exception(f"No tab found with url containing: {target}")
+
+    if close_other:
+        for tab in tabs:
+            if tab != matched_tab:
+                driver.switch_to.window(tab)
+                driver.close()
+
+        driver.switch_to.window(matched_tab)
+
+    return matched_tab
         
 def get_first_row(driver):
-    rows = driver.find_elements(
-        By.CSS_SELECTOR,
-        "tbody tr"
+
+    time.sleep(3)
+
+    rows = WebDriverWait(driver, 10, 3).until(
+        EC.presence_of_all_elements_located((By.CSS_SELECTOR, "tbody tr"))
     )
-    print(f"Panjang row adalah {len(rows)}")
+
+    print(f"current url {driver.current_url}")
+    print(f"Rows {len(rows)}")
+
     row = rows[3]
     
-    cols = row.find_elements(By.TAG_NAME, "td")
-    for i, col in enumerate(cols):
-        print(f"Col {i} : {col.text}")
+    url = row.find_elements(By.TAG_NAME, "td")[1].text
+    state = row.find_elements(By.TAG_NAME, "td")[2].text
+
+    print(f"Url : {url}")
+    print(f"State : {state}")
     
-    try:
-        btn = row.find_element(
-            By.CSS_SELECTOR,
-            "button[title='Open in Tag Assistant']"
-        )
-        ActionChains(driver, 1000).move_to_element(btn).click(btn).perform()
-    except Exception as e:
-        print(f"Button tidak ditemukan di row ini : {e}")
-
-def get_view_issue(driver):
-    btn = driver.find_element(
+    btn = row.find_element(
         By.CSS_SELECTOR,
-        "button.wd-issues-button"
+        "button[title='Open in Tag Assistant']"
+    )
+
+    return url, state, btn
+
+
+def click_view_issue(driver):
+    btn = WebDriverWait(driver, 10, 0).until(
+        EC.element_to_be_clickable(
+            (By.CSS_SELECTOR, "button.wd-issues-button")
+        )
     )
     ActionChains(driver, 1000).move_to_element(btn).click(btn).perform()
 
-def see_untaged_pages(driver):
-    btn = driver.find_element(
-        By.CSS_SELECTOR,
-        "a.wd-actionItem__action"
+def click_see_untaged_pages(driver):
+    btn = WebDriverWait(driver, 10, 0).until(
+        EC.element_to_be_clickable(
+            (By.CSS_SELECTOR, "a.wd-actionItem__action")
         )
-    ActionChains(driver, 1000).move_to_element(btn).click(btn).perform()
-
-def get_tagged_pages(driver):
-    btn = driver.find_element(
-        By.CSS_SELECTOR,
-        "gtm-popover[aria-label='More information about included pages']"
     )
     ActionChains(driver, 1000).move_to_element(btn).click(btn).perform()
 
-if __name__ == "__main__":
-    # Membuka chrome debugger 
-    # openChrome()
-    # time.sleep(5)
+def click_add_urls(driver):
+    btn = WebDriverWait(driver, 10, 0).until(
+        EC.element_to_be_clickable(
+            (By.CSS_SELECTOR, "ctui-bubble-icon-menu[title='Add URLs']")
+        )
+    )
+    ActionChains(driver, 1000).move_to_element(btn).click(btn).perform()
 
-    # Connect ke chrome debugger
+    next_btn = WebDriverWait(driver, 10, 0).until(
+        EC.element_to_be_clickable(
+            (By.CSS_SELECTOR, 'li[gil-id="tagCoverage_addUrl"]')
+        )
+    )
+    ActionChains(driver, 1000).move_to_element(next_btn).click(next_btn).perform()
+
+def click_domain_buttons(driver):
+    btn = WebDriverWait(driver, 10, 0).until(
+        EC.element_to_be_clickable(
+            (By.ID, "domain-start-button")
+        )
+    )
+    ActionChains(driver, 1000).move_to_element(btn).click(btn).perform()
+
+def click_finish_button(driver):
+
+    iframe = WebDriverWait(driver, 15).until(
+        EC.presence_of_element_located(
+            (By.CSS_SELECTOR, "iframe.__TAG_ASSISTANT_BADGE")
+        )
+    )
+
+    driver.switch_to.frame(iframe)
+    print(f"Current url : {driver.current_url}")
+    
+    btn = WebDriverWait(driver, 10).until(
+        EC.element_to_be_clickable(
+            (By.CSS_SELECTOR, "button.wd-finish-button")
+        )
+    )
+    ActionChains(driver, 1000).move_to_element(btn).click(btn).perform()
+
+def click_button_continue(driver):
+    btn = WebDriverWait(driver, 10, 0).until(
+        EC.element_to_be_clickable(
+            (By.CSS_SELECTOR, "button.wd-continue-debugging-button")
+        )
+    )
+    ActionChains(driver, 1000).move_to_element(btn).click(btn).perform()
+
+def click_and_fill_textarea(driver, url):
+    cm = WebDriverWait(driver, 10, 0).until(
+        EC.element_to_be_clickable(
+            (By.CSS_SELECTOR, ".CodeMirror")
+        )
+    )
+    ActionChains(driver, 1000).move_to_element(cm).click(cm).perform()
+
+    textarea = WebDriverWait(driver, 10, 0).until(
+        EC.element_to_be_clickable(
+            (By.CSS_SELECTOR, ".CodeMirror textarea")
+        )
+    )
+    textarea.send_keys(url)
+
+def click_add_on_add_urls(driver):
+    btn = WebDriverWait(driver, 10, 0).until(
+        EC.element_to_be_clickable(
+            (By.CSS_SELECTOR, "button[type='submit']")
+        )
+    )
+    ActionChains(driver, 1000).move_to_element(btn).click(btn).perform()
+
+def get_setup():
+    open_chrome()
     driver = connect_chrome()
-
-    # Membuka halaman
     driver.get(
         config.BASE_URL
     )
+    print(f"Switch tab pertama")
+    switch_tab(target=config.BASE_URL, driver=driver)
+    click_view_issue(driver)
+    click_see_untaged_pages(driver)
 
-    get_view_issue(driver)
-    time.sleep(3)
+    print(f"Switch tab kedua")
+    switch_tab("https://tagassistant.google.com/", driver)
 
-    see_untaged_pages(driver)
-    time.sleep(3)
+    click_button_continue(driver)
+    exit()
 
-    # getFirstRow(driver)
+    return driver
+
+def proses_row(driver):
+    while True:
+
+            url, state, btn = get_first_row(driver)
+
+            print(f"btn : {btn}")
+
+            ActionChains(driver, 1000).move_to_element(btn).click(btn).perform()
+
+            switch_tab("https://tagassistant.google.com/", driver)
+
+            click_domain_buttons(driver)
+
+            switch_tab(url, driver)
+
+            click_finish_button(driver)
+
+            switch_tab("https://tagassistant.google.com/", driver)
+
+            click_button_continue(driver)
+
+            switch_tab("https://tagmanager.google.com/", driver, close_other=True)
+
+            click_add_urls(driver)
+
+            click_and_fill_textarea(driver, url)
+
+            click_add_on_add_urls(driver)
+
+            return True
+
+if __name__ == "__main__":
+
+    driver = get_setup()
+
+    proses_row(driver)
