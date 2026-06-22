@@ -34,26 +34,19 @@ def findTab(target, driver):
     return None
         
 def getFirstRow(driver):
-
     rows = driver.find_elements(By.CSS_SELECTOR, "tbody tr")
-    print(f"Jumlah row adalah {len(rows)}")
-    data = []
-
-    for row in rows:
-        cols = row.find_elements(By.TAG_NAME, "td")
-        if cols:
-            
-            for i, col in enumerate(cols):
-                print(f"Col {i} : {col.text}")
-
-            print(f"Click {cols[1].text}")
-            ActionChains(driver).move_to_element(row).perform()
-            button = WebDriverWait(row, 5).until(
-                lambda r: r.find_element(By.CSS_SELECTOR, "button.icon--button")
-            )
-            button.click()
-            break
-
+    print(f"Panjang row adalah {len(rows)}")
+    row = rows[3]
+    
+    cols = row.find_elements(By.TAG_NAME, "td")
+    for i, col in enumerate(cols):
+        print(f"Col {i} : {col.text}")
+    
+    try:
+        btn = row.find_element(By.CSS_SELECTOR, "button[title='Open in Tag Assistant']")
+        ActionChains(driver, 1000).move_to_element(btn).click(btn).perform()
+    except Exception as e:
+        print(f"Button tidak ditemukan di row ini : {e}")
 
 if __name__ == "__main__":
     # Membuka chrome debugger 
@@ -64,8 +57,8 @@ if __name__ == "__main__":
     driver = connectChrome()
 
     # Membuka halaman
-    # driver.get(
-    #     config.BASE_URL
-    # )
+    driver.get(
+        config.BASE_URL
+    )
 
     getFirstRow(driver)
